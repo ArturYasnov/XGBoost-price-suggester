@@ -1,0 +1,7 @@
+xgboost==0.90
+bottle
+sklearn
+joblib
+wheel
+pandas
+requests

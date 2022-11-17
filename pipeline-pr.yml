@@ -1,0 +1,26 @@
+schema: "1"
+source: " "
+metadata:
+  name: " "
+  owner: "yasnov.artur@gmail.com"
+
+variables:
+  - name: deployToPre
+    type: boolean
+    defaultValue: false
+
+  - name: deployToDev
+    type: boolean
+    defaultValue: false
+
+  - name: namespacePrefix
+    type: string
+    defaultValue: kufar
+
+  - name: kubernetesObjectsName
+    type: string
+    defaultValue: ..
+
+  - name: targetClusterName
+    type: string
+    defaultValue: prod
