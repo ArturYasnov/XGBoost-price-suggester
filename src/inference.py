@@ -5,12 +5,11 @@ from os import path
 
 import joblib
 import pandas as pd
-import requests
 from bottle import post, request, response, route, run
 
-car_categories = pd.read_csv(path.realpath(path.curdir) + "/resources/...csv")
-car_brand_categories = pd.read_csv(
-    path.realpath(path.curdir) + "/resources/car_brand_categories.csv"
+product_categories = pd.read_csv(path.realpath(path.curdir) + "/resources/...csv")
+product_brand_categories = pd.read_csv(
+    path.realpath(path.curdir) + "/resources/product_brand_categories.csv"
 )["index"]
 
 request_date = datetime.strptime("2018-01-01", "%Y-%m-%d").date()
@@ -18,14 +17,8 @@ exrate_value = 2.0
 
 
 def get_request(request, n_try=0, max_n_try=7):
-    try:
-        result = request
-        return result.json()
-    except Exception:
-        time.sleep(1.5)
-        if n_try < max_n_try:
-            n_try += 1
-            get_request(request, n_try=n_try)
+    result = request
+    return result.json()
 
 
 def prediction_data_clear_and_transform(data):
@@ -34,38 +27,46 @@ def prediction_data_clear_and_transform(data):
     data[["..", ".."]] = data[["..", ".."]].astype("float64")
     data[".."] = data[".."].astype(str)
 
-    data = data[data.cars_engine.isin(["..", ".."])]
+    data = data[data.product_subcategory.isin(["..", ".."])]
     data = data[data.subcategory == 10200]
     data = data[data.condition == 1]
-    data = data[data.mileage >= 50]
-    data = data[data.regdate >= 2000]
+    data = data[data.amount >= 50]
 
-    data[".."] = data.cars_brand + " " + data.cars_model
+    data[".."] = data.product_brand + " " + data.product_model
     data = data.drop([".."], axis=1)
 
-    data = data[data.car.isin(car_categories)]
+    data = data[data.product.isin(product_categories)]
     data = data[["..", "..", ".."]]
     data = data.reset_index(drop=True)
     return data
 
 
-def dummy_encode(data):
-    data.cars_type = pd.Categorical(data.cars_type, categories=cars_type_categories)
-    data.cars_gearbox = pd.Categorical(
-        data.cars_gearbox, categories=cars_gearbox_categories
-    )
-    data.cars_engine = pd.Categorical(
-        data.cars_engine, categories=cars_engine_categories
-    )
-    data.car = pd.Categorical(data.car, categories=car_categories)
-    data.cars_brand = pd.Categorical(data.cars_brand, categories=car_brand_categories)
+def dummy_encode(sample):
+    product_type_categories = [
+        "food",
+        "clothes",
+        "shoes",
+        "real estate",
+        "auto",
+    ]
+    payment_categories = ["one_pay", "installment plan"]
+    product_subcategorie = ["cat_a", "cat_b"]
 
-    data = pd.get_dummies(data)
-    return data
+    sample.product_type = pd.Categorical(sample.product_type, categories=product_type_categories)
+    sample.product_gearbox = pd.Categorical(
+        sample.product_gearbox, categories=payment_categories
+    )
+    sample.product_stats = pd.Categorical(
+        sample.product_stats, categories=product_subcategorie
+    )
+
+    sample = pd.get_dummies(sample)
+    return sample
+
 
 
 @post("..")
-def predict_auto():
+def predict_product_price():
     try:
         o = json.load(request.body)
 
@@ -85,16 +86,16 @@ def predict_auto():
         data = data.dropna()
 
         for i in range(len(data)):
-            data.loc[i, ".."] = cars_type_map[data.loc[i, ".."]]
-            data.loc[i, ".."] = cars_engine_map[data.loc[i, ".."]]
-            data.loc[i, ".."] = cars_gearbox_map[data.loc[i, ".."]]
+            data.loc[i, ".."] = product_type_map[data.loc[i, ".."]]
+            data.loc[i, ".."] = product_stats_map[data.loc[i, ".."]]
+            data.loc[i, ".."] = product_subcategory_map[data.loc[i, ".."]]
 
         data = prediction_data_clear_and_transform(data)
         data = dummy_encode(data)
 
         if len(data) == 0:
             return bottle.HTTPResponse(
-                status=500, body="Сar does not fit the algorithm criteria"
+                status=500, body="Product does not fit the algorithm criteria"
             )
 
         xgb_model = joblib.load(path.realpath(path.curdir) + "/models/predictor")
@@ -105,14 +106,14 @@ def predict_auto():
 
         global request_date, exrate_value
         if request_date != date.today():
-            exrate_value = cur_proc("145", date.today())
+            exrate_value = cur_proc("225", date.today())
             request_date = date.today()
 
         o["predicted_price_usd"] = str(predict[0])
-        o["predicted_price_byn"] = str(predict[0] * exrate_value)
+        o["predicted_price_currency"] = str(predict[0] * exrate_value)
         return json.dumps(o)
     except Exception:
-        return bottle.HTTPResponse(status=500, body="Something wrong with data")
+        return bottle.HTTPResponse(status=500, body="Something wrong with the data")
 
 
 @route("/health")

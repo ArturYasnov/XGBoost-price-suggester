@@ -5,7 +5,6 @@ import joblib
 import pandas as pd
 import xgboost as xgb
 from sklearn.model_selection import (
-
     train_test_split,
 )
 
@@ -29,7 +28,7 @@ where
 
 # Clear missed values
 def missing_values_clean(data):
-    data.active_ads_of_user = data.active_ads_of_user.fillna(0)
+    data.active_stats_of_user = data.active_stats_of_user.fillna(0)
     data = data.dropna()
     return data
 
@@ -50,27 +49,22 @@ def feature_transform_and_selection(data):
 
 # Dummy encode
 def dummy_encode(sample):
-    cars_type_categories = [
-        "sedan",
-        "minivan",
-        "off-road",
-        "hatchback",
-        "estate",
-        "minibus",
-        "coupe",
-        "convertible",
-        "van",
-        "pickup",
+    product_type_categories = [
+        "food",
+        "clothes",
+        "shoes",
+        "real estate",
+        "auto",
     ]
-    cars_gearbox_categories = ["automatic", "mechanics"]
-    cars_engine_categories = ["petrol", "diesel"]
+    payment_categories = ["one_pay", "installment plan"]
+    product_subcategorie = ["cat_a", "cat_b"]
 
-    sample.cars_type = pd.Categorical(sample.cars_type, categories=cars_type_categories)
-    sample.cars_gearbox = pd.Categorical(
-        sample.cars_gearbox, categories=cars_gearbox_categories
+    sample.product_type = pd.Categorical(sample.product_type, categories=product_type_categories)
+    sample.product_stats = pd.Categorical(
+        sample.product_stats, categories=payment_categories
     )
-    sample.cars_engine = pd.Categorical(
-        sample.cars_engine, categories=cars_engine_categories
+    sample.product_engine = pd.Categorical(
+        sample.product_engine, categories=product_subcategorie
     )
 
     sample = pd.get_dummies(sample)
@@ -87,13 +81,13 @@ data = dummy_encode(data)
 X = data.drop(["price"], axis=1)
 y = data["price"]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, shuffle=True)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.12, shuffle=True)
 
 
 params = {
     "objective": "binary:logistic",
     "max_depth": 8,
-    "learning_rate": 0.1,
+    "learning_rate": 0.03,
     "colsample_bytree": 0.8,
     "subsample": 0.9,
     "min_child_weight": 4,
